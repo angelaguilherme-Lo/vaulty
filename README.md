@@ -65,46 +65,6 @@ This means the current version is ideal for UI development, prototyping, and por
 
 ---
 
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR-USERNAME/vaulty.git
-cd vaulty
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Start the development server
-
-```bash
-npm run dev
-```
-
-### 4. Open in the browser
-
-```txt
-http://localhost:3000
-```
-
----
-
-## Demo Vault PIN
-
-For the current MVP demo, the vault uses this 4-digit PIN:
-
-```txt
-1234
-```
-
-This is only for interface demonstration.
-
----
 
 ## Project Structure
 
@@ -156,17 +116,6 @@ Vaulty is designed to feel:
 - smooth and polished
 - mobile-friendly
 - visually bold without being messy
-
----
-
-## Scripts
-
-```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
-```
 
 ---
 
