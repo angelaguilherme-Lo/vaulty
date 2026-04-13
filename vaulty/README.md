@@ -1,36 +1,164 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vaulty
+
+Vaulty is a premium private workspace built with Next.js where users can manage passwords, notes, reminders, documents, emails, and memos in one polished interface.
+
+The app combines inspiration from Notion and Apple Reminders, with a modern UI that uses glassmorphism, colorful premium accents, smooth interactions, and a dedicated vault protected by a 4-digit PIN.
+
+## Features
+
+- Premium dashboard-style interface
+- Notes page
+- Reminders page
+- Documents page
+- Vault page with 4-digit PIN gate
+- Settings page
+- Light and dark mode
+- Lucide icons
+- Mobile bottom navigation
+- Responsive layout with desktop sidebar
+
+## Tech Stack
+
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- next-themes
+- Lucide React
+- Framer Motion
+- Zustand
+
+## Project Status
+
+This project is currently a frontend MVP.
+
+It includes the interface, navigation, theme switching, and a demo vault experience. It does **not** yet include production-grade authentication, encrypted password storage, database persistence, or secure backend vault logic.
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/YOUR-USERNAME/vaulty.git
+cd vaulty
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Open the app in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```txt
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Available Pages
 
-## Learn More
+- `/` — Home dashboard
+- `/notes` — Notes
+- `/reminders` — Reminders
+- `/documents` — Documents
+- `/vault` — Secure vault
+- `/settings` — Settings
 
-To learn more about Next.js, take a look at the following resources:
+## Demo Vault Access
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The current vault screen uses a demo 4-digit PIN:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```txt
+1234
+```
 
-## Deploy on Vercel
+This PIN is only for UI demonstration in the current MVP version.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Folder Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```txt
+app/
+  layout.tsx
+  providers.tsx
+  globals.css
+  page.tsx
+  notes/page.tsx
+  reminders/page.tsx
+  documents/page.tsx
+  vault/page.tsx
+  settings/page.tsx
+
+components/
+  dashboard-shell.tsx
+  sidebar.tsx
+  mobile-nav.tsx
+  header.tsx
+  theme-toggle.tsx
+  page-content.tsx
+  stat-card.tsx
+  section-card.tsx
+  vault-gate.tsx
+  vault-list.tsx
+  ui/
+    button.tsx
+    input.tsx
+
+lib/
+  data.ts
+  utils.ts
+
+store/
+  app-store.ts
+```
+
+## Design Direction
+
+Vaulty is designed to feel:
+
+- modern
+- premium
+- minimal but creative
+- glassmorphic
+- colorful without looking noisy
+- smooth and polished across desktop and mobile
+
+## Roadmap
+
+Planned next improvements:
+
+- User authentication
+- Database integration with Prisma and PostgreSQL
+- Secure password encryption
+- CRUD for notes, reminders, and vault entries
+- Search and filters
+- File uploads for documents
+- Better settings management
+- Production deployment
+
+## Security Note
+
+Vaulty is not yet a real secure password manager.
+
+The current vault logic is frontend-based and uses mock data for demonstration. Do not use it to store real passwords or sensitive personal information until a secure backend, encryption, and proper authentication are implemented.
+
+## Scripts
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
+
+## Author
+
+Built as the Vaulty project using Next.js App Router.
+
+## License
+
+This project is currently for personal development and learning unless you choose to add an open-source license.
