@@ -1,14 +1,13 @@
 "use client";
 
-import { Copy, Eye, EyeOff, Globe, LockKeyhole, LogOut, UserRound } from "lucide-react";
+import { Copy, Eye, EyeOff, Globe, LockKeyhole, LogOut, Trash2, UserRound } from "lucide-react";
 import { useState } from "react";
-import { vaultItems } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
 
 export function VaultList() {
-  const [visibleId, setVisibleId] = useState<number | null>(null);
-  const { lockVault } = useAppStore();
+  const [visibleId, setVisibleId] = useState<string | null>(null);
+  const { lockVault, vaultItems, deleteVaultItem } = useAppStore();
 
   return (
     <div className="space-y-4">
@@ -76,6 +75,15 @@ export function VaultList() {
                   >
                     <Copy className="h-4 w-4" />
                     Copy
+                  </Button>
+
+                  <Button
+                    variant="danger"
+                    onClick={() => deleteVaultItem(item.id)}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
                   </Button>
                 </div>
               </div>

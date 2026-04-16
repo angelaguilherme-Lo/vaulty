@@ -28,10 +28,6 @@ export function Header({ title, subtitle }: Props) {
             <Button variant="secondary" className="w-11 px-0">
               <Bell className="h-4 w-4" />
             </Button>
-            <Button className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              Create
-            </Button>
           </div>
         </div>
       </div>
