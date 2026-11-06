@@ -1,6 +1,6 @@
 # Vaulty 1.0 — release preparation
 
-Status: source prepared; unsigned device build verified. Not uploaded, submitted, or approved.
+Status: source prepared; signed Release archive built successfully with team 8TUS2WRNGR. App Store export is blocked by Xcode reporting No Accounts and no distribution certificate/profile. Not uploaded, submitted, or approved.
 
 - Name: Vaulty (availability must be checked in App Store Connect)
 - Subtitle: Your private workspace
@@ -36,8 +36,8 @@ No subscriptions or purchases. No credential autofill extension. No external AI;
 ## Items that must be finished before submission
 
 - Confirm app name availability and intended pricing/territories with the owner.
-- Create the explicit Bundle ID and App Store Connect app record.
-- Complete signing and a distribution archive with the account owner's credentials.
+- Explicit Bundle ID registered: com.angelaguilherme.vaulty. App Store record awaits a unique display name; Apple reports "Vaulty" is already in use.
+- Signed Release archive complete. Add the developer Apple Account in Xcode and finish App Store distribution export/upload.
 - Test on a physical iPhone: first key creation, Face ID and passcode fallback, cancellation, background/inactivity lock, restart persistence, save failures, real PDF export, encrypted backup export/restore to another installation, notification permission/revocation and delivery, and airplane mode.
 - Complete accessibility review including VoiceOver, text sizes, and smaller screens.
 - Supply screenshots captured from the actual iOS build at Apple's requested dimensions. The included browser preview is not an App Store screenshot.
@@ -50,10 +50,11 @@ No subscriptions or purchases. No credential autofill extension. No external AI;
 ## Validation completed
 
 - TypeScript, ESLint, static production export, and Capacitor asset synchronization.
+- Next.js patched to 16.4.5 with matching eslint-config-next. Production dependency audit reports zero vulnerabilities; eight moderate development-tool findings remain.
 - Automated encrypted-backup round-trip, binary file preservation in backups, wrong-passphrase rejection, tamper rejection, fresh randomness, and restore-schema checks.
 - Native CryptoKit round-trip, ciphertext does not contain test plaintext, fresh nonces, wrong-key/tamper/format rejection.
 - All native Swift files type-checked against the iOS SDK and Capacitor 8.6.0.
-- Standalone project: unsigned arm64 iPhone build succeeded using official Capacitor/Cordova xcframeworks, checked against upstream SHA-256 hashes.
+- Standalone project: unsigned arm64 iPhone build and signed Release archive succeeded using official Capacitor/Cordova xcframeworks, checked against upstream SHA-256 hashes.
 - Browser preview: note creation, credential creation, route navigation, masked credentials, lock, and clearing temporary entries on lock.
 
 ## Environment limits
