@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Sparkles, Shield, NotebookText, BellRing, FolderOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,28 +17,28 @@ const tourSteps = [
   {
     title: "Use Quick Capture",
     description:
-      "From the dashboard, you can quickly add a note, reminder, or document reference during your demo.",
+      "From the dashboard, you can quickly add a note, reminder, or document reference.",
     icon: NotebookText,
     gradient: "var(--gradient-pink)",
   },
   {
     title: "Stay on top of reminders",
     description:
-      "Use structured reminders with date, time, location, and priority to show a polished productivity workflow.",
+      "Use structured reminders with date, time, location, and priority.",
     icon: BellRing,
     gradient: "var(--gradient-warm)",
   },
   {
     title: "Keep documents organized",
     description:
-      "Documents let you store references and important file labels in a clean, clickable list.",
+      "Import files up to 5 MB, keep references, and export documents using the iOS share sheet.",
     icon: FolderOpen,
     gradient: "var(--gradient-green)",
   },
   {
     title: "Protect credentials in the vault",
     description:
-      "The vault uses a 4-digit PIN for demo protection, making sensitive entries feel private and controlled.",
+      "The iOS app encrypts your workspace and unlocks with device authentication. Export an encrypted backup in Settings so you can recover it on another device.",
     icon: Shield,
     gradient: "var(--gradient-cool)",
   },
@@ -46,19 +46,10 @@ const tourSteps = [
 
 export function OnboardingTour() {
   const { hasSeenOnboarding, setHasSeenOnboarding } = useAppStore();
-  const [open, setOpen] = useState(false);
+  const open = !hasSeenOnboarding;
   const [step, setStep] = useState(0);
 
-  useEffect(() => {
-    if (!hasSeenOnboarding) {
-      setOpen(true);
-    }
-  }, [hasSeenOnboarding]);
-
-  const closeTour = () => {
-    setOpen(false);
-    setHasSeenOnboarding(true);
-  };
+  const closeTour = () => { void setHasSeenOnboarding(true); };
 
   const nextStep = () => {
     if (step < tourSteps.length - 1) {
@@ -81,7 +72,7 @@ export function OnboardingTour() {
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-md"
+          role="dialog" aria-modal="true" aria-label="Welcome to Vaulty" className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

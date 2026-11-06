@@ -1,164 +1,47 @@
-# Vaulty
+# Vaulty for iPhone
 
-Vaulty is a premium private workspace built with Next.js where users can manage passwords, notes, reminders, documents, emails, and memos in one polished interface.
+A local-only private workspace for notes, reminders, documents, and credentials. Next.js exports the bundled interface; Capacitor provides the native iOS host.
 
-The app combines inspiration from Notion and Apple Reminders, with a modern UI that uses glassmorphism, colorful premium accents, smooth interactions, and a dedicated vault protected by a 4-digit PIN.
+This branch prepares a release candidate. Device security flows and a signed archive still need physical-device verification before App Store submission. See [release/APP-STORE.md](release/APP-STORE.md).
 
-## Features
+## Development
 
-- Premium dashboard-style interface
-- Notes page
-- Reminders page
-- Documents page
-- Vault page with 4-digit PIN gate
-- Settings page
-- Light and dark mode
-- Lucide icons
-- Mobile bottom navigation
-- Responsive layout with desktop sidebar
+Requires Node.js 22+, Xcode 26+ with the iOS SDK, and an Apple developer signing team for distribution.
 
-## Tech Stack
-
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- next-themes
-- Lucide React
-- Framer Motion
-- Zustand
-
-## Project Status
-
-This project is currently a frontend MVP.
-
-It includes the interface, navigation, theme switching, and a demo vault experience. It does **not** yet include production-grade authentication, encrypted password storage, database persistence, or secure backend vault logic.
-
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR-USERNAME/vaulty.git
-cd vaulty
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Start the development server
-
-```bash
-npm run dev
-```
-
-### 4. Open the app in your browser
-
-```txt
-http://localhost:3000
-```
-
-## Available Pages
-
-- `/` — Home dashboard
-- `/notes` — Notes
-- `/reminders` — Reminders
-- `/documents` — Documents
-- `/vault` — Secure vault
-- `/settings` — Settings
-
-## Demo Vault Access
-
-The current vault screen uses a demo 4-digit PIN:
-
-```txt
-1234
-```
-
-This PIN is only for UI demonstration in the current MVP version.
-
-## Folder Structure
-
-```txt
-app/
-  layout.tsx
-  providers.tsx
-  globals.css
-  page.tsx
-  notes/page.tsx
-  reminders/page.tsx
-  documents/page.tsx
-  vault/page.tsx
-  settings/page.tsx
-
-components/
-  dashboard-shell.tsx
-  sidebar.tsx
-  mobile-nav.tsx
-  header.tsx
-  theme-toggle.tsx
-  page-content.tsx
-  stat-card.tsx
-  section-card.tsx
-  vault-gate.tsx
-  vault-list.tsx
-  ui/
-    button.tsx
-    input.tsx
-
-lib/
-  data.ts
-  utils.ts
-
-store/
-  app-store.ts
-```
-
-## Design Direction
-
-Vaulty is designed to feel:
-
-- modern
-- premium
-- minimal but creative
-- glassmorphic
-- colorful without looking noisy
-- smooth and polished across desktop and mobile
-
-## Roadmap
-
-Planned next improvements:
-
-- User authentication
-- Database integration with Prisma and PostgreSQL
-- Secure password encryption
-- CRUD for notes, reminders, and vault entries
-- Search and filters
-- File uploads for documents
-- Better settings management
-- Production deployment
-
-## Security Note
-
-Vaulty is not yet a real secure password manager.
-
-The current vault logic is frontend-based and uses mock data for demonstration. Do not use it to store real passwords or sensitive personal information until a secure backend, encryption, and proper authentication are implemented.
-
-## Scripts
-
-```bash
-npm run dev
-npm run build
-npm run start
+```sh
+npm ci
+npm run typecheck
 npm run lint
+npm test
+npm run ios:sync
+npm run ios:open
 ```
 
-## Author
+Open `ios/App/App.xcodeproj`, choose the App target and your signing team, then run on an iPhone. Bundle identifier: `com.angelaguilherme.vaulty`. Developer team: `8TUS2WRNGR`.
 
-Built as the Vaulty project using Next.js App Router.
+`npm run build` exports assets to `out/`. `npm run ios:sync` rebuilds and copies them to the native project. There is no web server inside the app. Browser preview entries are temporary and are cleared on lock/reload.
 
-## License
+## Storage and authentication
 
-This project is currently for personal development and learning unless you choose to add an open-source license.
+`VaultyNativePlugin.swift` protects a 256-bit random workspace key in iOS Keychain with `WhenPasscodeSetThisDeviceOnly` and `userPresence`. Device authentication unlocks the key. AES-GCM encrypts the entire workspace in Application Support using a versioned authenticated header, atomic writes, complete file protection, and backup exclusion. The key stays in native code. Save operations are acknowledged only after the encrypted file is written. Backgrounding clears the native key/session; the UI drops decrypted workspace references and a native cover hides app-switcher snapshots. Inactivity locks after two minutes.
+
+The device passcode is required. Removing it can invalidate the key. The app does not recover lost keys or forgotten backup passphrases. It does not import the old unencrypted browser demo store. No demo password entries ship in this branch.
+
+## Backups and files
+
+Portable backups use WebCrypto AES-256-GCM with PBKDF2-SHA256 (600,000 iterations), random salt and nonce, and a separate passphrase of at least 12 characters. Restore validates version, entries and duplicate IDs before replacing the workspace. Keep a backup outside the device. Imported files retain their exact bytes; each file is limited to 5 MB and the serialized workspace to 20 MB.
+
+## Notifications and privacy
+
+Optional local notifications carry a generic prompt without entry titles. The next 60 future reminders are scheduled. No cloud accounts, tracking, analytics, ads, external fonts, or remote AI. The offline guide consists of bundled tips. Privacy and support screens are bundled in the app. Review their contact information before release.
+
+## Native cryptography checks
+
+On macOS:
+
+```sh
+swiftc ios/App/App/VaultCrypto.swift native-tests/main.swift -o /tmp/vaulty-crypto-tests
+/tmp/vaulty-crypto-tests
+```
+
+Automated tests and successful compilation do not replace physical-device security, accessibility, and recovery testing.
