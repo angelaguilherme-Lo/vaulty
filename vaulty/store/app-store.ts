@@ -1,120 +1,104 @@
 "use client";
 
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import {
-  defaultDocuments,
-  defaultNotes,
-  defaultReminders,
-  defaultVaultItems,
-  type DocumentItem,
-  type NoteItem,
-  type ReminderItem,
-  type VaultItem,
-} from "@/lib/data";
+import type { NoteItem, ReminderItem, DocumentItem, VaultItem } from "@/lib/data";
+import { emptyWorkspace, validateWorkspace, type Workspace } from "@/lib/workspace";
+import { isIOS, VaultyNative } from "@/lib/native";
 
-type AppState = {
-  pin: string;
-  setPin: (value: string) => void;
-  isVaultUnlocked: boolean;
-  unlockVault: () => void;
-  lockVault: () => void;
-
-  notes: NoteItem[];
-  reminders: ReminderItem[];
-  documents: DocumentItem[];
-  vaultItems: VaultItem[];
-
-  addNote: (item: Omit<NoteItem, "id">) => void;
-  deleteNote: (id: string) => void;
-
-  addReminder: (item: Omit<ReminderItem, "id">) => void;
-  deleteReminder: (id: string) => void;
-
-  addDocument: (item: Omit<DocumentItem, "id">) => void;
-  deleteDocument: (id: string) => void;
-
-  addVaultItem: (item: Omit<VaultItem, "id">) => void;
-  deleteVaultItem: (id: string) => void;
-
-  hasSeenOnboarding: boolean;
-  setHasSeenOnboarding: (value: boolean) => void;
+type Result = Promise<boolean>;
+type AppState = Workspace & {
+  isVaultUnlocked: boolean; busy: boolean; error: string | null; session: string | null;
+  unlockVault: () => Result; lockVault: () => void;
+  addNote: (item: Omit<NoteItem, "id">) => Result;
+  deleteNote: (id: string) => Result;
+  addReminder: (item: Omit<ReminderItem, "id">) => Result;
+  deleteReminder: (id: string) => Result;
+  addDocument: (item: Omit<DocumentItem, "id">) => Result;
+  deleteDocument: (id: string) => Result;
+  addVaultItem: (item: Omit<VaultItem, "id">) => Result;
+  deleteVaultItem: (id: string) => Result;
+  setHasSeenOnboarding: (value: boolean) => Result;
+  setNotifications: (enabled: boolean) => Result;
+  replaceWorkspace: (value: unknown) => Result;
 };
 
-const VAULT_PIN = "1234";
-const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export function workspaceSnapshot(): Workspace {
+  const s = useAppStore.getState();
+  return { version: 1, notes: s.notes, reminders: s.reminders, documents: s.documents,
+    vaultItems: s.vaultItems, hasSeenOnboarding: s.hasSeenOnboarding, notificationsEnabled: s.notificationsEnabled };
+}
 
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      pin: "",
-      setPin: (value) => set({ pin: value }),
-      isVaultUnlocked: false,
-      unlockVault: () => {
-        if (get().pin === VAULT_PIN) {
-          set({ isVaultUnlocked: true });
-        }
-      },
-      lockVault: () => set({ isVaultUnlocked: false, pin: "" }),
+async function syncNotifications(workspace: Workspace) {
+  if (!isIOS()) return;
+  const reminders = workspace.notificationsEnabled ? workspace.reminders.map(r => ({ id: r.id, at: new Date(`${r.date}T${r.time}:00`).toISOString() })) : [];
+  await VaultyNative.syncReminders({ reminders });
+}
 
-      notes: defaultNotes,
-      reminders: defaultReminders,
-      documents: defaultDocuments,
-      vaultItems: defaultVaultItems,
-
-      addNote: (item) =>
-        set((state) => ({
-          notes: [{ id: makeId(), ...item }, ...state.notes],
-        })),
-
-      deleteNote: (id) =>
-        set((state) => ({
-          notes: state.notes.filter((item) => item.id !== id),
-        })),
-
-      addReminder: (item) =>
-        set((state) => ({
-          reminders: [{ id: makeId(), ...item }, ...state.reminders],
-        })),
-
-      deleteReminder: (id) =>
-        set((state) => ({
-          reminders: state.reminders.filter((item) => item.id !== id),
-        })),
-
-      addDocument: (item) =>
-        set((state) => ({
-          documents: [{ id: makeId(), ...item }, ...state.documents],
-        })),
-
-      deleteDocument: (id) =>
-        set((state) => ({
-          documents: state.documents.filter((item) => item.id !== id),
-        })),
-
-      addVaultItem: (item) =>
-        set((state) => ({
-          vaultItems: [{ id: makeId(), ...item }, ...state.vaultItems],
-        })),
-
-      deleteVaultItem: (id) =>
-        set((state) => ({
-          vaultItems: state.vaultItems.filter((item) => item.id !== id),
-        })),
-
-      hasSeenOnboarding: false,
-      setHasSeenOnboarding: (value: boolean) => set({ hasSeenOnboarding: value }),
-    }),
-    {
-      name: "vaulty-demo-store-v6",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        notes: state.notes,
-        reminders: state.reminders,
-        documents: state.documents,
-        vaultItems: state.vaultItems,
-        hasSeenOnboarding: state.hasSeenOnboarding,
-      }),
+// Commit to native encrypted storage BEFORE reporting success in the interface.
+async function commit(change: (s: Workspace) => Workspace): Result {
+  const state = useAppStore.getState();
+  if (!state.isVaultUnlocked || state.busy) return false;
+  useAppStore.setState({ busy: true, error: null });
+  try {
+    const next = validateWorkspace(change(workspaceSnapshot()));
+    const json = JSON.stringify(next);
+    if (new TextEncoder().encode(json).length > 20_000_000) throw new Error("Workspace limit reached. Export a backup and remove unused files.");
+    if (isIOS()) await VaultyNative.saveWorkspace({ workspace: json, session: state.session! });
+    if (useAppStore.getState().session !== state.session || !useAppStore.getState().isVaultUnlocked) return false;
+    useAppStore.setState({ ...next });
+    try { await syncNotifications(next); } catch {
+      useAppStore.setState({ error: "Saved, but alerts could not be updated. Open Settings and enable reminders again." });
     }
-  )
-);
+    return true;
+  } catch (error) {
+    if (useAppStore.getState().isVaultUnlocked) useAppStore.setState({ error: error instanceof Error ? error.message : "Could not save. Your changes were not stored." });
+    return false;
+  } finally { useAppStore.setState({ busy: false }); }
+}
+
+export const useAppStore = create<AppState>()((set, get) => ({
+  ...emptyWorkspace(), isVaultUnlocked: false, busy: false, error: null, session: null,
+  unlockVault: async () => {
+    if (get().busy) return false;
+    set({ busy: true, error: null });
+    try {
+      if (!isIOS()) { set({ ...emptyWorkspace(), isVaultUnlocked: true, session: crypto.randomUUID() }); return true; }
+      const result = await VaultyNative.unlockWorkspace();
+      const workspace = result.workspace ? validateWorkspace(JSON.parse(result.workspace)) : emptyWorkspace();
+      set({ ...workspace, isVaultUnlocked: true, session: result.session });
+      await syncNotifications(workspace).catch(() => set({ error: "Could not refresh reminder notifications." }));
+      return true;
+    } catch (error) {
+      await VaultyNative.lockWorkspace().catch(() => {});
+      set({ error: error instanceof Error ? error.message : "Could not unlock. Please try again." });
+      return false;
+    } finally { set({ busy: false }); }
+  },
+  lockVault: () => {
+    set({ ...emptyWorkspace(), isVaultUnlocked: false, session: null, error: null });
+    if (isIOS()) void VaultyNative.lockWorkspace().catch(() => {});
+  },
+  addNote: item => commit(s => ({ ...s, notes: [{ ...item, id: crypto.randomUUID() }, ...s.notes] })),
+  deleteNote: id => commit(s => ({ ...s, notes: s.notes.filter(item => item.id !== id) })),
+  addReminder: item => commit(s => {
+    if (!Number.isFinite(new Date(`${item.date}T${item.time}:00`).getTime()) || new Date(`${item.date}T${item.time}:00`).getTime() <= Date.now()) throw new Error("Choose a reminder time in the future.");
+    return { ...s, reminders: [{ ...item, id: crypto.randomUUID() }, ...s.reminders] };
+  }),
+  deleteReminder: id => commit(s => ({ ...s, reminders: s.reminders.filter(item => item.id !== id) })),
+  addDocument: item => commit(s => ({ ...s, documents: [{ ...item, id: crypto.randomUUID() }, ...s.documents] })),
+  deleteDocument: id => commit(s => ({ ...s, documents: s.documents.filter(item => item.id !== id) })),
+  addVaultItem: item => commit(s => ({ ...s, vaultItems: [{ ...item, id: crypto.randomUUID() }, ...s.vaultItems] })),
+  deleteVaultItem: id => commit(s => ({ ...s, vaultItems: s.vaultItems.filter(item => item.id !== id) })),
+  setHasSeenOnboarding: value => commit(s => ({ ...s, hasSeenOnboarding: value })),
+  setNotifications: async enabled => {
+    if (enabled && isIOS()) {
+      try {
+        if (!(await VaultyNative.requestNotifications()).granted) {
+          set({ error: "Notifications are off. Enable them for Vaulty in iPhone Settings." }); return false;
+        }
+      } catch { set({ error: "Could not request notification permission." }); return false; }
+    }
+    return commit(s => ({ ...s, notificationsEnabled: enabled }));
+  },
+  replaceWorkspace: value => commit(() => validateWorkspace(value)),
+}));

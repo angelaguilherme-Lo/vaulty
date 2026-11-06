@@ -1,160 +1,49 @@
-# Vaulty
+# Vaulty for iPhone
 
-A premium private workspace built with Next.js for storing notes, reminders, document references, emails, memos, and vault-style password entries in one polished interface.
+A local-only private workspace for notes, reminders, documents, and credentials. Next.js exports the bundled interface; Capacitor provides the native iOS host.
 
-Vaulty blends ideas from **Notion** and **Apple Reminders** with a modern visual style: glassmorphism, colorful premium accents, dark/light theme support, responsive layouts, and a dedicated vault protected by a 4-digit PIN in the current MVP.
+This branch prepares a release candidate. Device security flows and a signed archive still need physical-device verification before App Store submission. See [vaulty/release/APP-STORE.md](vaulty/release/APP-STORE.md).
 
----
+The application source is in the `vaulty/` subdirectory. Run the commands below there.
 
-## Preview
+## Development
 
-Vaulty includes:
+Requires Node.js 22+, Xcode 26+ with the iOS SDK, and an Apple developer signing team for distribution.
 
-- A modern dashboard homepage
-- Notes page
-- Reminders page
-- Documents page
-- Vault page
-- Settings page
-- Desktop sidebar navigation
-- Mobile bottom navigation
-- Light and dark mode toggle
-- Lucide icons
-- Framer Motion transitions
-
----
-
-## Tech Stack
-
-- **Next.js** with **App Router**
-- **TypeScript**
-- **Tailwind CSS**
-- **next-themes**
-- **Lucide React**
-- **Framer Motion**
-- **Zustand**
-
----
-
-## Current Status
-
-Vaulty is currently a **frontend MVP**.
-
-It already includes the interface structure, routing, theming, responsive navigation, and a demo vault experience. It does **not** yet include:
-
-- user authentication
-- database integration
-- encrypted password storage
-- secure backend vault logic
-- production-ready CRUD operations
-
-This means the current version is ideal for UI development, prototyping, and portfolio work, but **not yet suitable for storing real sensitive passwords**.
-
----
-
-## Pages
-
-| Route | Description |
-|------|-------------|
-| `/` | Dashboard / homepage |
-| `/notes` | Notes workspace |
-| `/reminders` | Reminder list |
-| `/documents` | Documents overview |
-| `/vault` | Vault screen with PIN gate |
-| `/settings` | Appearance and privacy settings |
-
----
-
-
-## Project Structure
-
-```txt
-app/
-  layout.tsx
-  providers.tsx
-  globals.css
-  page.tsx
-  notes/page.tsx
-  reminders/page.tsx
-  documents/page.tsx
-  vault/page.tsx
-  settings/page.tsx
-
-components/
-  dashboard-shell.tsx
-  sidebar.tsx
-  mobile-nav.tsx
-  header.tsx
-  theme-toggle.tsx
-  page-content.tsx
-  stat-card.tsx
-  section-card.tsx
-  vault-gate.tsx
-  vault-list.tsx
-  ui/
-    button.tsx
-    input.tsx
-
-lib/
-  data.ts
-  utils.ts
-
-store/
-  app-store.ts
+```sh
+npm ci
+npm run typecheck
+npm run lint
+npm test
+npm run ios:sync
+npm run ios:open
 ```
 
----
+Open `ios/App/App.xcodeproj`, choose the App target and your signing team, then run on an iPhone. Bundle identifier: `com.angelaguilherme.vaulty`. Developer team: `8TUS2WRNGR`.
 
-## Design Direction
+`npm run build` exports assets to `out/`. `npm run ios:sync` rebuilds and copies them to the native project. There is no web server inside the app. Browser preview entries are temporary and are cleared on lock/reload.
 
-Vaulty is designed to feel:
+## Storage and authentication
 
-- modern
-- premium
-- colorful but controlled
-- minimal and clean
-- smooth and polished
-- mobile-friendly
-- visually bold without being messy
+`VaultyNativePlugin.swift` protects a 256-bit random workspace key in iOS Keychain with `WhenPasscodeSetThisDeviceOnly` and `userPresence`. Device authentication unlocks the key. AES-GCM encrypts the entire workspace in Application Support using a versioned authenticated header, atomic writes, complete file protection, and backup exclusion. The key stays in native code. Save operations are acknowledged only after the encrypted file is written. Backgrounding clears the native key/session; the UI drops decrypted workspace references and a native cover hides app-switcher snapshots. Inactivity locks after two minutes.
 
----
+The device passcode is required. Removing it can invalidate the key. The app does not recover lost keys or forgotten backup passphrases. It does not import the old unencrypted browser demo store. No demo password entries ship in this branch.
 
-## Roadmap
+## Backups and files
 
-Planned next steps for Vaulty:
+Portable backups use WebCrypto AES-256-GCM with PBKDF2-SHA256 (600,000 iterations), random salt and nonce, and a separate passphrase of at least 12 characters. Restore validates version, entries and duplicate IDs before replacing the workspace. Keep a backup outside the device. Imported files retain their exact bytes; each file is limited to 5 MB and the serialized workspace to 20 MB.
 
-- Authentication
-- Prisma + PostgreSQL
-- Secure password encryption
-- CRUD for vault items, notes, reminders, and documents
-- Search and filtering
-- File uploads
-- Better settings controls
-- Production deployment
-- Real user accounts
+## Notifications and privacy
 
----
+Optional local notifications carry a generic prompt without entry titles. The next 60 future reminders are scheduled. No cloud accounts, tracking, analytics, ads, external fonts, or remote AI. The offline guide consists of bundled tips. Privacy and support screens are bundled in the app. Review their contact information before release.
 
-## Security Notice
+## Native cryptography checks
 
-Vaulty is **not yet a production password manager**.
+On macOS:
 
-The current vault logic is client-side and uses mock data. Do not use the current version to store real passwords, financial credentials, or sensitive personal information until secure authentication, encryption, and backend protection are implemented.
+```sh
+swiftc ios/App/App/VaultCrypto.swift native-tests/main.swift -o /tmp/vaulty-crypto-tests
+/tmp/vaulty-crypto-tests
+```
 
----
-
-## Why this project
-
-Vaulty was created as a premium personal workspace concept that merges:
-
-- structured information management
-- fast reminders and memos
-- private vault access
-- elegant interface design
-- modern Next.js architecture
-
----
-
-## Authorship
-
-Built as the **Vaulty** project using Next.js App Router.
+Automated tests and successful compilation do not replace physical-device security, accessibility, and recovery testing.

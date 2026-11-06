@@ -8,7 +8,7 @@ const quickReplies = [
   {
     question: "How should I organize my notes?",
     answer:
-      "Group notes by Personal, Work, Travel, and Private. Keep titles short and use tags for faster scanning during the pitch.",
+      "Group notes by Personal, Work, Travel, and Private. Keep titles short and use tags for faster scanning.",
   },
   {
     question: "How should I set reminder priority?",
@@ -16,9 +16,9 @@ const quickReplies = [
       "Use Critical for urgent deadlines, High for important time-sensitive tasks, Medium for standard follow-ups, and Low for optional reminders.",
   },
   {
-    question: "What should I show in the demo?",
+    question: "How do backups work?",
     answer:
-      "Open the dashboard, add a note, add a reminder, unlock the vault with the demo PIN, create a vault item, then switch between pages to show live persistence.",
+      "Open Settings and export an encrypted backup with a separate passphrase. Save it outside this device. Vaulty cannot recover a forgotten backup passphrase.",
   },
   {
     question: "How do I explain Vaulty?",
@@ -34,7 +34,7 @@ export function AiHelper() {
   >([
     {
       role: "assistant",
-      text: "Hi, I’m Vaulty AI Helper. I can help you organize entries, and suggest how to optimize each section.",
+      text: "Hi, I’m Vaulty Guide. I can help you organize entries, and suggest how to optimize each section.",
     },
   ]);
 
@@ -51,7 +51,7 @@ export function AiHelper() {
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[image:var(--gradient-main)] text-white shadow-[0_20px_50px_rgba(91,108,255,0.35)] transition hover:scale-[1.04] md:bottom-6"
-        aria-label="Open Vaulty AI Helper"
+        aria-label="Open Vaulty Guide"
       >
         {open ? <X className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
       </button>
@@ -63,9 +63,9 @@ export function AiHelper() {
               <MessageCircle className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-[color:var(--text)]">Vaulty AI Helper</h3>
+              <h3 className="font-semibold text-[color:var(--text)]">Vaulty Guide</h3>
               <p className="text-xs text-[color:var(--text-muted)]">
-                Support assistant
+                Offline tips · no messages leave your device
               </p>
             </div>
           </div>

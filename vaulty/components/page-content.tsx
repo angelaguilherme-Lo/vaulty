@@ -8,8 +8,6 @@ import {
   FolderOpen,
   Mail,
   NotebookText,
-  Shield,
-  SlidersHorizontal,
   Sparkles,
   PlusCircle,
   Trash2,
@@ -34,6 +32,9 @@ import {
 } from "@/lib/data";
 import { VaultGate } from "@/components/vault-gate";
 import { VaultList } from "@/components/vault-list";
+import { DataControls } from "@/components/data-controls";
+import { toBase64 } from "@/lib/backup";
+import { exportDocument } from "@/lib/files";
 import { useAppStore } from "@/store/app-store";
 
 function FadeIn({ children }: { children: React.ReactNode }) {
@@ -90,27 +91,27 @@ export function HomePageContent() {
     { ...defaultStats[3], value: String(notes.length) },
   ];
 
-  const handleQuickSave = (e: React.FormEvent) => {
+  const handleQuickSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickTitle.trim() || !quickBody.trim()) return;
 
     if (quickType === "note") {
-      addNote({ title: quickTitle, body: quickBody, tag: "Quick Note" });
+      if (!await addNote({ title: quickTitle, body: quickBody, tag: "Quick Note" })) return;
     } else if (quickType === "reminder") {
-      addReminder({
+      if (!await addReminder({
         title: quickTitle,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(Date.now() + 86400000).toLocaleDateString("en-CA"),
         time: "18:00",
         location: "Personal",
         priority: "Medium",
-      });
+      })) return;
     } else {
-      addDocument({
+      if (!await addDocument({
         name: quickTitle,
         meta: quickBody,
         fileType: "text/reference",
         content: quickBody,
-      });
+      })) return;
     }
 
     setQuickTitle("");
@@ -202,7 +203,7 @@ export function HomePageContent() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--gradient-cool)] text-white">
                   <Mail className="h-4 w-4" />
                 </div>
-                <p className="font-medium text-[color:var(--text)]">Main email access</p>
+                <p className="font-medium text-[color:var(--text)]">Open credentials</p>
               </div>
             </Link>
 
@@ -211,7 +212,7 @@ export function HomePageContent() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--gradient-warm)] text-white">
                   <FileText className="h-4 w-4" />
                 </div>
-                <p className="font-medium text-[color:var(--text)]">Signed documents folder</p>
+                <p className="font-medium text-[color:var(--text)]">Browse documents</p>
               </div>
             </Link>
 
@@ -220,7 +221,7 @@ export function HomePageContent() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--gradient-pink)] text-white">
                   <NotebookText className="h-4 w-4" />
                 </div>
-                <p className="font-medium text-[color:var(--text)]">Travel memo note</p>
+                <p className="font-medium text-[color:var(--text)]">Open your notes</p>
               </div>
             </Link>
 
@@ -303,10 +304,10 @@ export function NotesPageContent() {
   const [body, setBody] = useState("");
   const [tag, setTag] = useState("");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
-    addNote({ title, body, tag: tag || "General" });
+    if (!await addNote({ title, body, tag: tag || "General" })) return;
     setTitle("");
     setBody("");
     setTag("");
@@ -337,7 +338,7 @@ export function NotesPageContent() {
                     <p className="font-semibold text-[color:var(--text)]">{note.title}</p>
                     <p className="text-xs text-[color:var(--text-muted)]">{note.tag}</p>
                   </div>
-                  <Button variant="danger" className="h-9 px-3" onClick={() => deleteNote(note.id)}>
+                  <Button variant="danger" aria-label={`Delete ${note.title}`} className="h-11 px-3" onClick={() => { if (confirm("Delete this note permanently?")) void deleteNote(note.id); }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -359,10 +360,10 @@ export function RemindersPageContent() {
   const [location, setLocation] = useState(reminderLocations[0]);
   const [priority, setPriority] = useState(reminderPriorities[1]);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !date.trim()) return;
-    addReminder({ title, date, time, location, priority });
+    if (!await addReminder({ title, date, time, location, priority })) return;
     setTitle("");
     setDate("");
     setTime(reminderTimes[0]);
@@ -421,7 +422,7 @@ export function RemindersPageContent() {
                       {item.priority} · {item.location}
                     </p>
                   </div>
-                  <Button variant="danger" className="h-9 px-3" onClick={() => deleteReminder(item.id)}>
+                  <Button variant="danger" aria-label={`Delete ${item.title}`} className="h-11 px-3" onClick={() => { if (confirm("Delete this reminder permanently?")) void deleteReminder(item.id); }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -444,73 +445,36 @@ export function DocumentsPageContent() {
   const [meta, setMeta] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState("");
+  const [reading, setReading] = useState(false);
+  const [error, setError] = useState("");
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
+  const formatFileSize = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
   const handleFileChange = async (file: File | null) => {
-    setSelectedFile(file);
-    if (!file) {
-      setFileContent("");
-      return;
-    }
-
-    const isTextLike =
-      file.type.startsWith("text/") ||
-      file.type.includes("json") ||
-      file.type.includes("javascript") ||
-      file.type.includes("xml");
-
-    if (isTextLike) {
-      try {
-        const text = await file.text();
-        setFileContent(text);
-      } catch {
-        setFileContent(`Demo content for ${file.name}`);
-      }
-    } else {
-      setFileContent(`Demo file content placeholder for ${file.name}`);
-    }
+    setSelectedFile(null); setFileContent(""); setError("");
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError("Choose a file smaller than 5 MB."); return; }
+    setReading(true);
+    try {
+      const encoded = toBase64(new Uint8Array(await file.arrayBuffer()));
+      setFileContent(encoded); setSelectedFile(file);
+    } catch { setError("Could not read this file. Choose it again."); }
+    finally { setReading(false); }
   };
-
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedFile && !name.trim()) return;
-
-    addDocument({
-      name: selectedFile?.name || name,
-      meta: meta || "Uploaded",
-      fileSize: selectedFile ? formatFileSize(selectedFile.size) : undefined,
-      fileType: selectedFile?.type || "unknown",
-      fileName: selectedFile?.name || name,
-      content: fileContent || meta || "Demo document content",
-    });
-
-    setName("");
-    setMeta("");
-    setSelectedFile(null);
-    setFileContent("");
-
+    if (reading || (!selectedFile && !name.trim())) return;
+    if (!await addDocument({
+      name: selectedFile?.name || name, meta: meta || "Personal",
+      ...(selectedFile ? { fileSize: formatFileSize(selectedFile.size), fileType: selectedFile.type || "application/octet-stream",
+        fileName: selectedFile.name, base64: fileContent } : { content: meta || name, fileType: "text/plain", fileName: `${name}.txt` }),
+    })) return;
+    setName(""); setMeta(""); setSelectedFile(null); setFileContent("");
     const input = document.getElementById("vaulty-file-upload") as HTMLInputElement | null;
     if (input) input.value = "";
   };
-
-  const downloadDocument = (doc: DocumentItem) => {
-    const content = doc.content || `Document: ${doc.name}\nMeta: ${doc.meta}`;
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = doc.fileName || `${doc.name}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  const downloadDocument = async (doc: DocumentItem) => {
+    try { await exportDocument(doc); }
+    catch { setError("Could not export this document. Please try again."); }
   };
 
   return (
@@ -519,6 +483,7 @@ export function DocumentsPageContent() {
 
       <div className="grid-2">
         <SectionCard title="Add document reference" subtitle="Supports upload and download">
+          {error ? <p role="alert" className="mb-3 text-sm text-rose-500">{error}</p> : null}
           <form onSubmit={onSubmit} className="grid gap-3">
             <Input
               placeholder="Document name"
@@ -553,14 +518,14 @@ export function DocumentsPageContent() {
                 </div>
               ) : (
                 <p className="mt-3 text-xs text-[color:var(--text-muted)]">
-                  Choose a file from your computer to add it to the Documents page.
+                  Choose a file from your device. Files up to 5 MB are supported.
                 </p>
               )}
             </div>
 
-            <Button type="submit" className="gap-2">
+            <Button type="submit" disabled={reading} className="gap-2">
               <Upload className="h-4 w-4" />
-              Add document
+              {reading ? "Reading file…" : "Add document"}
             </Button>
           </form>
         </SectionCard>
@@ -589,7 +554,8 @@ export function DocumentsPageContent() {
                       type="button"
                       variant="secondary"
                       className="h-9 px-3"
-                      onClick={() => downloadDocument(doc)}
+                      aria-label={`Export ${doc.name}`}
+                      onClick={() => void downloadDocument(doc)}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
@@ -598,7 +564,8 @@ export function DocumentsPageContent() {
                       type="button"
                       variant="danger"
                       className="h-9 px-3"
-                      onClick={() => deleteDocument(doc.id)}
+                      aria-label={`Delete ${doc.name}`}
+                      onClick={() => { if (confirm("Delete this document permanently?")) void deleteDocument(doc.id); }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -607,7 +574,7 @@ export function DocumentsPageContent() {
 
                 <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
                   <FolderOpen className="h-4 w-4 text-[color:var(--green)]" />
-                  Uploaded or saved in demo memory
+                  Saved in your workspace
                 </div>
               </div>
             ))}
@@ -627,16 +594,16 @@ export function VaultPageContent() {
   const [website, setWebsite] = useState("");
   const [category, setCategory] = useState("");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !username.trim() || !password.trim()) return;
-    addVaultItem({
+    if (!await addVaultItem({
       title,
       username,
       password,
       website: website || "not provided",
       category: category || "General",
-    });
+    })) return;
     setTitle("");
     setUsername("");
     setPassword("");
@@ -654,7 +621,7 @@ export function VaultPageContent() {
             <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
               <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
               <Input placeholder="Username or email" value={username} onChange={(e) => setUsername(e.target.value)} />
-              <Input placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input type="password" autoComplete="new-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
               <Input placeholder="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
               <Input placeholder="Category" value={category} onChange={(e) => setCategory(e.target.value)} />
               <div className="md:col-span-2">
@@ -676,64 +643,24 @@ export function VaultPageContent() {
 }
 
 export function SettingsPageContent() {
-  const { setHasSeenOnboarding } = useAppStore();
-
-  return (
-    <FadeIn>
-      <Header title="Settings" subtitle="Appearance, privacy, and interface control" />
-      <div className="grid-2">
-        <SectionCard title="Appearance" subtitle="Theme and visual experience">
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] p-4 text-sm text-[color:var(--text-muted)]">
-              Switch between light and dark themes using the toggle in the top header.
-            </div>
-            <Button variant="secondary" className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              Refine style
-            </Button>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Onboarding tour" subtitle="Replay the welcome experience">
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] p-4 text-sm text-[color:var(--text-muted)]">
-              Start the animated onboarding tour again for new viewers during your pitch.
-            </div>
-            <Button
-              variant="secondary"
-              className="gap-2"
-              onClick={() => setHasSeenOnboarding(false)}
-            >
-              <PlayCircle className="h-4 w-4" />
-              Start tour again
-            </Button>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Privacy" subtitle="Vault protection">
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] p-4 text-sm text-[color:var(--text-muted)]">
-              4-digit vault gate is active for sensitive credentials in this demo.
-            </div>
-            <Button variant="ghost" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Update PIN later
-            </Button>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Organization" subtitle="Sorting and structure">
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] p-4 text-sm text-[color:var(--text-muted)]">
-              The homepage cards are clickable, reminders use dropdowns, documents support upload/download, and Vaulty AI Helper can assist your demo flow.
-            </div>
-            <Button variant="ghost" className="gap-2">
-              <SlidersHorizontal className="h-4 w-4" />
-              Manage layout
-            </Button>
-          </div>
-        </SectionCard>
-      </div>
-    </FadeIn>
-  );
+  const { setHasSeenOnboarding, lockVault, notificationsEnabled, setNotifications } = useAppStore();
+  return <FadeIn>
+    <Header title="Settings" subtitle="Your device, your workspace" />
+    <div className="grid-2">
+      <SectionCard title="Privacy and locking" subtitle="Protected on your iPhone">
+        <p className="mb-4 text-sm leading-6">The iOS app encrypts your workspace on this device. Vaulty locks when you leave the app or after two minutes without interaction. Device authentication unlocks it.</p>
+        <Button onClick={lockVault} className="gap-2"><LockKeyhole className="h-4 w-4" />Lock Vaulty</Button>
+        <div className="mt-5 flex gap-4 text-sm underline"><Link href="/privacy">Privacy policy</Link><Link href="/support">Help and recovery</Link></div>
+      </SectionCard>
+      <SectionCard title="Reminder notifications" subtitle="Optional local alerts">
+        <p className="mb-4 text-sm leading-6">Notifications show a private prompt to open Vaulty. Entry titles stay inside the app. The next 60 future reminders are scheduled; open Vaulty to refresh them. Changing time zones may change delivery times.</p>
+        <Button onClick={() => void setNotifications(!notificationsEnabled)}>{notificationsEnabled ? "Turn off notifications" : "Enable reminder notifications"}</Button>
+      </SectionCard>
+      <SectionCard title="Backup and recovery" subtitle="Keep a copy outside this device"><DataControls /></SectionCard>
+      <SectionCard title="Appearance and welcome" subtitle="Make yourself at home">
+        <p className="mb-4 text-sm leading-6">Use the theme toggle in the header to switch appearance.</p>
+        <Button variant="secondary" onClick={() => void setHasSeenOnboarding(false)} className="gap-2"><PlayCircle className="h-4 w-4" />Replay welcome tour</Button>
+      </SectionCard>
+    </div>
+  </FadeIn>;
 }

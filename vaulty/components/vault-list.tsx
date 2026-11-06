@@ -1,11 +1,13 @@
 "use client";
 
 import { Copy, Eye, EyeOff, Globe, LockKeyhole, LogOut, Trash2, UserRound } from "lucide-react";
+import { isIOS, VaultyNative } from "@/lib/native";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
 
 export function VaultList() {
+  const [message, setMessage] = useState("");
   const [visibleId, setVisibleId] = useState<string | null>(null);
   const { lockVault, vaultItems, deleteVaultItem } = useAppStore();
 
@@ -25,6 +27,8 @@ export function VaultList() {
         </div>
       </div>
 
+      {message ? <p role="status" className="text-sm">{message}</p> : null}
+      {!vaultItems.length ? <p className="panel rounded-3xl p-5">No credentials yet. Add your first entry above.</p> : null}
       <div className="grid gap-4">
         {vaultItems.map((item) => {
           const shown = visibleId === item.id;
@@ -70,7 +74,13 @@ export function VaultList() {
 
                   <Button
                     variant="secondary"
-                    onClick={() => navigator.clipboard.writeText(item.password)}
+                    onClick={async () => {
+                      try {
+                        if (isIOS()) await VaultyNative.copyPassword({ value: item.password });
+                        else await navigator.clipboard.writeText(item.password);
+                        setMessage("Copied. On iOS, this clipboard entry expires after one minute.");
+                      } catch { setMessage("Could not copy. Try again."); }
+                    }}
                     className="gap-2"
                   >
                     <Copy className="h-4 w-4" />
@@ -79,7 +89,7 @@ export function VaultList() {
 
                   <Button
                     variant="danger"
-                    onClick={() => deleteVaultItem(item.id)}
+                    onClick={() => { if (confirm("Delete this credential permanently?")) void deleteVaultItem(item.id); }}
                     className="gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
