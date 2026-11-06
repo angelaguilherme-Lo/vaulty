@@ -1,8 +1,10 @@
 # Vaulty 1.0 — release preparation
 
-Status: source prepared; signed Release archive built successfully with team 8TUS2WRNGR. App Store export is blocked by Xcode reporting No Accounts and no distribution certificate/profile. Not uploaded, submitted, or approved.
+Status: source prepared; signed Release archive built successfully with team 8TUS2WRNGR. App Store record is created. App Store export is blocked because the command-line exporter cannot see the Apple Account that is present in the Xcode UI. Not uploaded, submitted, or approved.
 
-- Name: Vaulty (availability must be checked in App Store Connect)
+- App Store name: Vaulty: Private Workspace (created and confirmed by the owner)
+- App Store Connect ID: 6831593828
+- App Store Connect: https://appstoreconnect.apple.com/apps/6831593828/distribution
 - Subtitle: Your private workspace
 - Primary language: English (U.S.)
 - Category: Productivity; secondary Utilities
@@ -36,13 +38,13 @@ No subscriptions or purchases. No credential autofill extension. No external AI;
 ## Items that must be finished before submission
 
 - Confirm app name availability and intended pricing/territories with the owner.
-- Explicit Bundle ID registered: com.angelaguilherme.vaulty. App Store record awaits a unique display name; Apple reports "Vaulty" is already in use.
-- Signed Release archive complete. Add the developer Apple Account in Xcode and finish App Store distribution export/upload.
+- App record created with bundle ID com.angelaguilherme.vaulty. Version 1.0.0 description, keywords, support URL, review notes, subtitle and Productivity category are saved. Age rating is 4+. Data Not Collected privacy disclosure published with owner authorization. Manual release is selected.
+- Signed Release archive complete. Xcode UI recognizes the Apple Account, but the automated command-line exporter still reports No Accounts and cannot obtain distribution signing assets. Export/upload through Xcode Organizer using the included archive; the owner does not need to add the account again.
 - Test on a physical iPhone: first key creation, Face ID and passcode fallback, cancellation, background/inactivity lock, restart persistence, save failures, real PDF export, encrypted backup export/restore to another installation, notification permission/revocation and delivery, and airplane mode.
 - Complete accessibility review including VoiceOver, text sizes, and smaller screens.
 - Supply screenshots captured from the actual iOS build at Apple's requested dimensions. The included browser preview is not an App Store screenshot.
-- Confirm support destination/contact and publish the final privacy policy URL.
-- Complete age-rating and App Privacy questionnaires based on this final binary. Current design has no developer-collected user data; user-directed exports are outside the workspace.
+- Privacy and support URLs saved using the public documents on codex/ios-release-preparation. Keep that branch available until these documents are merged and the URLs updated. Supply App Review contact details; confirm pricing/availability and content rights before submission.
+- Age-rating and App Privacy questionnaires completed for this source: 4+ and Data Not Collected. Recheck these if the binary changes.
 - Complete Apple's encryption/export-compliance questionnaire. The app uses AES-256-GCM in Apple CryptoKit and WebCrypto, and PBKDF2-SHA256 for backups. No export-compliance exemption has been asserted in Info.plist.
 - Confirm current SDK/RC acceptance with App Store Connect before uploading. Installed Xcode reports 27.0 build 27A266a.
 - Upload to TestFlight, review test results, and only then submit for review.
