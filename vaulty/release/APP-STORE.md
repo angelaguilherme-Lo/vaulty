@@ -1,6 +1,6 @@
 # Vaulty 1.0 — release preparation
 
-Status: source prepared; signed Release archive built successfully with team 8TUS2WRNGR. App Store record is created. App Store export is blocked because the command-line exporter cannot see the Apple Account that is present in the Xcode UI. Not uploaded, submitted, or approved.
+Status: build 1 was uploaded by the owner and is available in TestFlight. Its Apple-provided encryption questionnaire is saved, and the owner was invited to Vaulty Internal Testing. Build 2 contains reminder-form and navigation fixes, has completed browser/automated QA, and must be uploaded from Xcode Organizer. Public App Review submission is still pending.
 
 - App Store name: Vaulty: Private Workspace (created and confirmed by the owner)
 - App Store Connect ID: 6831593828
@@ -10,7 +10,7 @@ Status: source prepared; signed Release archive built successfully with team 8TU
 - Category: Productivity; secondary Utilities
 - Bundle identifier: com.angelaguilherme.vaulty
 - SKU: vaulty-ios-001
-- Version: 1.0.0; build: 1
+- Version: 1.0.0; newest prepared build: 2; TestFlight currently has build 1
 - Team: 8TUS2WRNGR
 - Intended release: free, local-only, iPhone, iOS 15+
 
@@ -39,7 +39,7 @@ No subscriptions or purchases. No credential autofill extension. No external AI;
 
 - Confirm app name availability and intended pricing/territories with the owner.
 - App record created with bundle ID com.angelaguilherme.vaulty. Version 1.0.0 description, keywords, support URL, review notes, subtitle and Productivity category are saved. Age rating is 4+. Data Not Collected privacy disclosure published with owner authorization. Manual release is selected.
-- Signed Release archive complete. Xcode UI recognizes the Apple Account, but the automated command-line exporter still reports No Accounts and cannot obtain distribution signing assets. Export/upload through Xcode Organizer using the included archive; the owner does not need to add the account again.
+- Build 1 upload completed through Xcode Organizer. Use the same process to upload the build 2 archive after reviewing release/BUILD-2-QA.md.
 - Test on a physical iPhone: first key creation, Face ID and passcode fallback, cancellation, background/inactivity lock, restart persistence, save failures, real PDF export, encrypted backup export/restore to another installation, notification permission/revocation and delivery, and airplane mode.
 - Complete accessibility review including VoiceOver, text sizes, and smaller screens.
 - Supply screenshots captured from the actual iOS build at Apple's requested dimensions. The included browser preview is not an App Store screenshot.
@@ -62,3 +62,6 @@ No subscriptions or purchases. No credential autofill extension. No external AI;
 ## Environment limits
 
 The normal SPM project cannot evaluate package manifests inside this automation sandbox (`sandbox-exec: sandbox_apply: Operation not permitted`). A standalone Xcode project with the same native source and official embedded frameworks is included to avoid package resolution. No system security settings were changed. CoreSimulatorService is inaccessible here, so native UI, device authentication, notifications, and share-sheet behavior are not runtime-verified.
+
+
+Build 2 QA: [BUILD-2-QA.md](BUILD-2-QA.md).

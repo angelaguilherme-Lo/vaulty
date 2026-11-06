@@ -16,6 +16,13 @@ export function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
   const native = useSyncExternalStore(subscribe, isIOS, () => false);
   useEffect(() => {
     const handles: Promise<PluginListenerHandle>[] = [];
+    const viewport = window.visualViewport;
+    const fitViewport = () => {
+      document.documentElement.style.setProperty("--workspace-height", `${viewport?.height ?? window.innerHeight}px`);
+    };
+    fitViewport();
+    viewport?.addEventListener("resize", fitViewport);
+    window.addEventListener("resize", fitViewport);
     if (isIOS()) {
       handles.push(VaultyNative.addListener("workspaceLocked", () => {
         useAppStore.setState({ ...emptyWorkspace(), isVaultUnlocked: false, session: null });
@@ -31,6 +38,9 @@ export function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
     window.addEventListener("pointerdown", activity, { passive: true });
     window.addEventListener("keydown", activity);
     return () => {
+      viewport?.removeEventListener("resize", fitViewport);
+      window.removeEventListener("resize", fitViewport);
+      document.documentElement.style.removeProperty("--workspace-height");
       for (const handle of handles) void handle.then(h => h.remove());
       document.removeEventListener("visibilitychange", lockOnHide);
       window.removeEventListener("pointerdown", activity);
@@ -58,10 +68,10 @@ export function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
       </div>
     </main>
   );
-  return <>
+  return <div className="workspace-root">
     {!native ? <p className="preview-banner">Temporary browser preview — changes are not saved.</p> : null}
     {error ? <div className="status-banner" role="alert">{error}</div> : null}
     <fieldset disabled={busy} className="workspace-fieldset" aria-busy={busy}>{children}</fieldset>
     {busy ? <div className="saving-indicator" role="status">Saving…</div> : null}
-  </>;
+  </div>;
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { Bot, MessageCircle, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +30,23 @@ const quickReplies = [
 
 export function AiHelper() {
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const buttons = () => Array.from(panel?.querySelectorAll<HTMLButtonElement>("button") || []);
+    buttons()[0]?.focus();
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setOpen(false); return; }
+      if (event.key !== "Tab") return;
+      const items = buttons();
+      if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items.at(-1)?.focus(); }
+      else if (!event.shiftKey && document.activeElement === items.at(-1)) { event.preventDefault(); items[0]?.focus(); }
+    };
+    document.addEventListener("keydown", keyDown);
+    return () => { document.removeEventListener("keydown", keyDown); previous?.focus(); };
+  }, [open]);
   const [messages, setMessages] = useState<
     { role: "assistant" | "user"; text: string }[]
   >([
@@ -50,26 +68,28 @@ export function AiHelper() {
     <>
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[image:var(--gradient-main)] text-white shadow-[0_20px_50px_rgba(91,108,255,0.35)] transition hover:scale-[1.04] md:bottom-6"
-        aria-label="Open Vaulty Guide"
+        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] text-[color:var(--text)]"
+        aria-label="Open Vaulty Guide" aria-expanded={open}
       >
         {open ? <X className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
       </button>
 
-      {open ? (
-        <div className="fixed bottom-40 right-4 z-50 w-[calc(100%-32px)] max-w-md rounded-[28px] border border-[color:var(--line)] bg-[color:var(--panel)] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.2)] backdrop-blur-2xl md:bottom-24">
+      {open ? createPortal(
+        <div className="guide-overlay" onClick={() => setOpen(false)}>
+        <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="vaulty-guide-title" className="guide-panel rounded-[28px] border border-[color:var(--line)] bg-[color:var(--bg)] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.2)]" onClick={event => event.stopPropagation()}>
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--gradient-main)] text-white">
               <MessageCircle className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-[color:var(--text)]">Vaulty Guide</h3>
+              <h3 id="vaulty-guide-title" className="font-semibold text-[color:var(--text)]">Vaulty Guide</h3>
               <p className="text-xs text-[color:var(--text-muted)]">
                 Offline tips · no messages leave your device
               </p>
             </div>
           </div>
 
+          <Button variant="ghost" onClick={() => setOpen(false)} aria-label="Close guide" className="mb-4 w-full gap-2"><X className="h-4 w-4" />Close guide</Button>
           <div className="max-h-[320px] space-y-3 overflow-auto pr-1">
             {messages.map((message, index) => (
               <div
@@ -98,7 +118,7 @@ export function AiHelper() {
               </Button>
             ))}
           </div>
-        </div>
+        </div></div>, document.body
       ) : null}
     </>
   );

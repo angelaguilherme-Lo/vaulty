@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   Clock3,
+  CalendarDays,
   FileText,
   FolderOpen,
   Mail,
@@ -50,16 +51,19 @@ function FadeIn({ children }: { children: React.ReactNode }) {
 }
 
 function Select({
+  id,
   value,
   onChange,
   children,
 }: {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   children: React.ReactNode;
 }) {
   return (
     <select
+      id={id}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="h-12 w-full rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] px-4 text-sm text-[color:var(--text)] outline-none"
@@ -353,85 +357,90 @@ export function NotesPageContent() {
 }
 
 export function RemindersPageContent() {
-  const { reminders, addReminder, deleteReminder } = useAppStore();
+  const { reminders, addReminder, deleteReminder, busy, notificationsEnabled } = useAppStore();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState(reminderTimes[0]);
   const [location, setLocation] = useState(reminderLocations[0]);
   const [priority, setPriority] = useState(reminderPriorities[1]);
+  const [errors, setErrors] = useState<{ title?: string; date?: string; form?: string }>({});
+  const [message, setMessage] = useState("");
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!title.trim() || !date.trim()) return;
-    if (!await addReminder({ title, date, time, location, priority })) return;
+    setMessage("");
+    const missing = {
+      ...(!title.trim() ? { title: "Enter a title for your reminder." } : {}),
+      ...(!date ? { date: "Choose a date for your reminder." } : {}),
+    };
+    setErrors(missing);
+    if (missing.title || missing.date) {
+      const field = e.currentTarget.elements.namedItem(missing.title ? "title" : "date");
+      if (field instanceof HTMLElement) field.focus();
+      return;
+    }
+    if (!await addReminder({ title: title.trim(), date, time, location, priority })) {
+      setErrors({ form: useAppStore.getState().error || "Your reminder was not saved. Please try again." });
+      return;
+    }
     setTitle("");
     setDate("");
-    setTime(reminderTimes[0]);
-    setLocation(reminderLocations[0]);
-    setPriority(reminderPriorities[1]);
+    setErrors({});
+    setMessage("Reminder added.");
   };
 
   return (
     <FadeIn>
-      <Header title="Reminders" subtitle="Create reminders with date, time, location, and priority" />
+      <Header title="Reminders" subtitle="Plan a task and choose when it is due" />
       <div className="grid-2">
-        <SectionCard title="Add reminder" subtitle="Structured management">
-          <form onSubmit={onSubmit} className="grid gap-3">
-            <Input placeholder="Reminder title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-
-            <Select value={time} onChange={setTime}>
-              {reminderTimes.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </Select>
-
-            <Select value={location} onChange={setLocation}>
-              {reminderLocations.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </Select>
-
-            <Select value={priority} onChange={setPriority}>
-              {reminderPriorities.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </Select>
-
-            <Button type="submit" className="gap-2">
-              <PlusCircle className="h-4 w-4" />
-              Add reminder
-            </Button>
+        <SectionCard title="Add reminder" subtitle="Choose a title, date, and time">
+          <form onSubmit={onSubmit} noValidate className="reminder-form grid gap-4">
+            <div className="form-field">
+              <label htmlFor="reminder-title">Title <span>(required)</span></label>
+              <Input id="reminder-title" name="title" required placeholder="What do you need to do?"
+                value={title} aria-invalid={!!errors.title} aria-describedby={errors.title ? "reminder-title-error" : undefined}
+                onChange={e => { setTitle(e.target.value); setErrors({}); setMessage(""); }} />
+              {errors.title ? <p id="reminder-title-error" role="alert" className="field-error">{errors.title}</p> : null}
+            </div>
+            <div className="form-field">
+              <label htmlFor="reminder-date"><CalendarDays className="h-4 w-4" aria-hidden="true" />Date <span>(required)</span></label>
+              <Input id="reminder-date" name="date" type="date" required value={date} aria-invalid={!!errors.date}
+                aria-describedby="reminder-date-hint" onChange={e => { setDate(e.target.value); setErrors({}); setMessage(""); }} />
+              <p id="reminder-date-hint" role={errors.date ? "alert" : undefined} className={errors.date ? "field-error" : "field-hint"}>
+                {errors.date || (date ? "Your reminder will be due on this date." : "Tap to choose a date.")}
+              </p>
+            </div>
+            <div className="form-field">
+              <label htmlFor="reminder-time">Time</label>
+              <Input id="reminder-time" name="time" type="time" required value={time}
+                onChange={e => { setTime(e.target.value); setErrors({}); setMessage(""); }} />
+              <p className="field-hint">Choose a time in the future. Notifications can be enabled in Settings.</p>
+            </div>
+            <div className="form-field"><label htmlFor="reminder-location">Location or list</label>
+              <Select id="reminder-location" value={location} onChange={setLocation}>
+                {reminderLocations.map(item => <option key={item} value={item}>{item}</option>)}
+              </Select>
+            </div>
+            <div className="form-field"><label htmlFor="reminder-priority">Priority</label>
+              <Select id="reminder-priority" value={priority} onChange={setPriority}>
+                {reminderPriorities.map(item => <option key={item} value={item}>{item}</option>)}
+              </Select>
+            </div>
+            {errors.form ? <p role="alert" className="field-error">{errors.form}</p> : null}
+            {message ? <p role="status" className="text-sm text-[color:var(--green)]">{message}</p> : null}
+            <Button type="submit" disabled={busy} className="gap-2"><PlusCircle className="h-4 w-4" />{busy ? "Saving reminder…" : "Add reminder"}</Button>
           </form>
         </SectionCard>
-
-        <SectionCard title="Saved reminders" subtitle={`${reminders.length} item(s)`}>
+        <SectionCard title="Saved reminders" subtitle={`${reminders.length} item(s) · ${notificationsEnabled ? "Notifications enabled" : "Notifications off"}`}>
+          {!reminders.length ? <p className="text-sm text-[color:var(--text-muted)]">Your reminders will appear here after you add one.</p> : null}
           <div className="space-y-3">
-            {reminders.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] p-4">
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-[color:var(--text)]">{item.title}</p>
-                    <p className="text-xs text-[color:var(--text-muted)]">
-                      {item.priority} · {item.location}
-                    </p>
-                  </div>
-                  <Button variant="danger" aria-label={`Delete ${item.title}`} className="h-11 px-3" onClick={() => { if (confirm("Delete this reminder permanently?")) void deleteReminder(item.id); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-                  <Clock3 className="h-4 w-4 text-[color:var(--orange)]" />
-                  {item.date} · {item.time}
-                </div>
+            {reminders.map(item => <div key={item.id} className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--panel-strong)] p-4">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div><p className="font-semibold">{item.title}</p><p className="text-xs text-[color:var(--text-muted)]">{item.priority} · {item.location}</p></div>
+                <Button variant="danger" aria-label={`Delete ${item.title}`} className="h-11 px-3" onClick={() => { if (confirm("Delete this reminder permanently?")) void deleteReminder(item.id); }}><Trash2 className="h-4 w-4" /></Button>
               </div>
-            ))}
+              <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]"><Clock3 className="h-4 w-4 text-[color:var(--orange)]" />{item.date} · {item.time}</div>
+            </div>)}
           </div>
         </SectionCard>
       </div>
